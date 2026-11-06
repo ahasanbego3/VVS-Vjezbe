@@ -96,7 +96,8 @@ namespace LoanManagement.Services.Loan
                 throw new InvalidOperationException("Customer " + customerId + " does not exist");
             }
 
-            for (int i = 0; i < loanResults.Count; )
+            int lastLoanId = -1;
+            for (int i = 0; i < loanResults.Count; i++)
             {
                 double[] podaci = new double[5];
                 podaci[0] = loanResults[i].Principal;
@@ -117,6 +118,7 @@ namespace LoanManagement.Services.Loan
                 }
 
                 int x1 = GenerateLoanId();
+                lastLoanId = x1;
 
                 Kredit l = new Kredit(x1, customerId, podaci[0], podaci[1], (int)podaci[2], podaci[3], startDate);
                 _db.AddLoan(l);
@@ -124,9 +126,8 @@ namespace LoanManagement.Services.Loan
 
                 RepaymentService rs = new RepaymentService(_db);
                 rs.ProcessPayment(customerId, podaci[3], startDate);
-                return x1;
             }
-            return -1;
+            return lastLoanId;
         }
 
         private int GenerateLoanId()
