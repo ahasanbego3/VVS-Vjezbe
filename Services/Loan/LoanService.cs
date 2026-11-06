@@ -116,21 +116,7 @@ namespace LoanManagement.Services.Loan
                     Console.WriteLine("Payment was recalculated: " + podaci[3]);
                 }
 
-                Random r = new Random();
-                int x1 = 0;
-                bool flg = false;
-                while (flg == false)
-                {
-                    x1 = r.Next(1000, 9999);
-                    flg = true;
-                    for (int j = 0; j < _db.Loans.Count; j++)
-                    {
-                        if (_db.Loans[j].Id == x1)
-                        {
-                            flg = false;
-                        }
-                    }
-                }
+                int x1 = GenerateLoanId();
 
                 Kredit l = new Kredit(x1, customerId, podaci[0], podaci[1], (int)podaci[2], podaci[3], startDate);
                 _db.AddLoan(l);
@@ -141,6 +127,27 @@ namespace LoanManagement.Services.Loan
                 return x1;
             }
             return -1;
+        }
+
+        private int GenerateLoanId()
+        {
+            Random r = new Random();
+            int id;
+            bool isUnique = false;
+            do
+            {
+                id = r.Next(1000, 9999);
+                isUnique = true;
+                for (int j = 0; j < _db.Loans.Count; j++)
+                {
+                    if (_db.Loans[j].Id == id)
+                    {
+                        isUnique = false;
+                        break;
+                    }
+                }
+            } while (!isUnique);
+            return id;
         }
     }
 }
