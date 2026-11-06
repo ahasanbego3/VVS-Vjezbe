@@ -103,15 +103,15 @@ namespace LoanManagement.Services.Loan
                 podaci[1] = loanResults[i].InterestRate;
                 podaci[2] = loanResults[i].TermInYears;
                 podaci[3] = loanResults[i].MonthlyPayment;
-                podaci[4] = 0;
+                bool paymentRecalculated = false;
 
                 if (loanResults[i].MonthlyPayment <= 0)
                 {
                     loanResults[i].MonthlyPayment = loanResults[i].Principal * (loanResults[i].InterestRate / 100 / 12) * Math.Pow(1 + loanResults[i].InterestRate / 100 / 12, loanResults[i].TermInYears * 12) / (Math.Pow(1 + loanResults[i].InterestRate / 100 / 12, loanResults[i].TermInYears * 12) - 1);
                     podaci[3] = loanResults[i].MonthlyPayment;
-                    podaci[4] = 1;
+                    paymentRecalculated = true;
                 }
-                if (podaci[4] == 1)
+                if (paymentRecalculated)
                 {
                     Console.WriteLine("Payment was recalculated: " + podaci[3]);
                 }
