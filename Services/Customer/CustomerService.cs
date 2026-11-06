@@ -24,7 +24,7 @@ namespace LoanManagement.Services.Customer
             {
                 throw new ArgumentException("Name is empty");
             }
-            if (email.IndexOf("@") < 0)
+            if (string.IsNullOrEmpty(email) || email.IndexOf("@") < 0)
             {
                 throw new ArgumentException("Email is not valid");
             }
@@ -46,7 +46,7 @@ namespace LoanManagement.Services.Customer
             }
 
             Kupac k = new Kupac(x1, name, email);
-            //Console.WriteLine("DEBUG id=" + x1);
+            
             _db.AddCustomer(k);
             Console.WriteLine("Customer saved with id " + x1);
             return x1;
