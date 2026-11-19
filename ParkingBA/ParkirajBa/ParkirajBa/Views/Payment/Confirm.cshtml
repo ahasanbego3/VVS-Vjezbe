@@ -1,0 +1,72 @@
+@{
+    Layout = "_Layout";
+    ViewData["Title"] = "Potvrda plaćanja";
+    var ticket = ViewBag.Ticket as ParkirajBa.Models.Ticket;
+    string cardName = ViewBag.CardName ?? "";
+}
+
+<div class="main-container">
+    <div class="map-layer"><img src="/images/map.png" alt="Mapa" /></div>
+    <div class="custom-overlay"></div>
+
+    <div class="content-wrapper">
+        <div class="payment-card confirmation-style">
+            <div class="payment-card-top">
+                <a href="/Payment/Checkout?ticketId=@ticket?.Id" class="btn-back-link">&lt; Nazad na plaćanje</a>
+            </div>
+
+            <h2 class="pay-title">Plaćanje</h2>
+
+            <div class="stepper">
+                <div class="circle active"></div>
+                <div class="line active"></div>
+                <div class="circle active"></div>
+                <div class="line"></div>
+                <div class="circle"></div>
+            </div>
+
+            <div class="form-body">
+                <div class="confirm-box">
+                    <p style="margin:0 0 12px;color:#555;font-size:15px;">
+                        Molimo potvrdite detalje vaše uplate:
+                    </p>
+                    <div style="display:grid;gap:8px;">
+                        <div style="display:flex;justify-content:space-between;font-size:14px;">
+                            <span style="color:#888;">Vlasnik kartice</span>
+                            <span style="font-weight:600;">@cardName</span>
+                        </div>
+                        @if (ticket != null)
+                        {
+                            <div style="display:flex;justify-content:space-between;font-size:14px;">
+                                <span style="color:#888;">Parking objekat</span>
+                                <span style="font-weight:600;">@(ticket.ParkingObject?.name ?? "Parking")</span>
+                            </div>
+                            <div style="display:flex;justify-content:space-between;font-size:14px;">
+                                <span style="color:#888;">Vrijedi do</span>
+                                <span style="font-weight:600;">@(ticket.ExpiresAt.HasValue ? ticket.ExpiresAt.Value.ToString("dd.MM.yyyy HH:mm") : "—")</span>
+                            </div>
+                            <hr style="border:none;border-top:1px solid #eee;margin:4px 0;" />
+                            <div style="display:flex;justify-content:space-between;font-size:16px;">
+                                <span style="color:#333;font-weight:600;">Ukupno za uplatu</span>
+                                <span style="font-weight:700;color:#6287f9;">
+                                    @((ViewBag.IsAdditionalCharge == true ? ticket.AdditionalCharge : ticket.Price).ToString("0.00")) KM
+                                </span>
+                            </div>
+                        }
+                    </div>
+                </div>
+
+                <div class="footer-buttons" style="display:flex;gap:15px;width:100%;">
+                    <button onclick="window.history.back()" class="btn-gray" style="flex:1;justify-content:center;">Nazad</button>
+
+                    <form asp-action="SendConfirmationEmail" method="post" style="flex:1;display:flex;">
+                        <input type="hidden" name="cardName" value="@cardName" />
+                        <input type="hidden" name="ticketId" value="@ticket?.Id" />
+                        <input type="hidden" name="additionalCharge" value="@(ViewBag.IsAdditionalCharge == true ? "true" : "false")" />
+                        <button type="submit" class="btn-blue" style="width:100%;justify-content:center;">Potvrdi i plati</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

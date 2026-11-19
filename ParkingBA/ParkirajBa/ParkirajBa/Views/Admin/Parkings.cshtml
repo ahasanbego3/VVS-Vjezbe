@@ -1,0 +1,117 @@
+@model IEnumerable<ParkirajBa.Models.ParkingObject>
+@{
+    Layout = "_Layout";
+    ViewData["Title"] = "Parkinzi";
+}
+
+<partial name="_AdminStyles" />
+
+<div class="adm-wrapper">
+    <partial name="_AdminSidebar" />
+
+    <main class="adm-content">
+
+        <div class="adm-page-header">
+            <div>
+                <h1 class="adm-page-title">Parkinzi</h1>
+                <p class="adm-page-sub">Pregled i upravljanje parking objektima</p>
+            </div>
+            <span class="adm-badge blue" style="font-size:13px;padding:6px 14px;">@Model.Count() lokacija</span>
+        </div>
+
+        @if (TempData["Success"] != null)
+        {
+            <div class="adm-alert-success">✓ @TempData["Success"]</div>
+        }
+
+        <div class="adm-card" style="overflow:hidden;">
+            <table class="adm-table">
+                <thead>
+                    <tr>
+                        <th>Naziv</th>
+                        <th>Adresa</th>
+                        <th>Vlasnik</th>
+                        <th>Mjesta</th>
+                        <th>Status</th>
+                        <th>Oprema</th>
+                        <th>Akcije</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var p in Model)
+                    {
+                        double occ = p.totalSpots > 0
+                            ? (double)(p.totalSpots.Value - p.availableSpots) / p.totalSpots.Value * 100
+                            : 0;
+                        string occColor = occ >= 80 ? "#e11d48" : occ >= 50 ? "#d97706" : "#059669";
+
+                        <tr>
+                            <td style="font-weight:600;">@p.name</td>
+                            <td style="color:var(--adm-text2);font-size:12px;">@(p.address ?? "—")</td>
+                            <td style="color:var(--adm-text2);font-size:12px;">@(p.Owner?.FullName ?? "—")</td>
+                            <td>
+                                <span style="font-weight:600;color:var(--adm-text);">@p.availableSpots/@p.totalSpots</span>
+                                <div style="height:4px;background:var(--adm-border);border-radius:2px;margin-top:5px;width:80px;">
+                                    <div style="height:100%;width:@occ.ToString("0.0", System.Globalization.CultureInfo.InvariantCulture)%;background:@occColor;border-radius:2px;"></div>
+                                </div>
+                            </td>
+                            <td>
+                                @if (p.isApproved == true)
+                                {
+                                    <span class="adm-badge green">Odobreno</span>
+                                }
+                                else if (p.isApproved == false)
+                                {
+
+                                    <span class="adm-badge red">Odbijeno</span>
+                                }
+                                else
+                                {
+
+                                    <span class="adm-badge orange">Na čekanju</span>
+                                }
+                            </td>
+                            <td style="font-size:15px;letter-spacing:2px;">
+                                @if (p.hasCameras == true)
+                                {
+                                    <span title="Video nadzor">📷</span>
+                                }
+                                @if (p.hasEVCharger == true)
+                                {
+                                    <span title="EV punjač">⚡</span>
+                                }
+                                @if (p.isDisabledAccessible == true)
+                                {
+                                    <span title="Pristupačno">♿</span>
+                                }
+                                @if (p.isUnderground == true)
+                                {
+                                    <span title="Garaža">🏢</span>
+                                }
+                            </td>
+                            <td>
+                                <div style="display:flex;gap:6px;">
+                                    <a href="/Admin/ParkingDetails/@p.ID" class="adm-btn adm-btn-warning adm-btn-sm">Uredi</a>
+                                    @if (p.isApproved != true)
+                                    {
+                                        <form asp-action="ApproveParking" method="post" style="display:inline;">
+                                            @Html.AntiForgeryToken()
+                                            <input type="hidden" name="id" value="@p.ID" />
+                                            <button type="submit" class="adm-btn adm-btn-success adm-btn-sm">Odobri</button>
+                                        </form>
+                                    }
+                                    <form asp-action="DeleteParking" method="post"
+                                          onsubmit="event.preventDefault();admConfirm(this,'Brisanje parkinga','Jeste li sigurni da želite obrisati parking &quot;@p.name&quot;?');">
+                                        <input type="hidden" name="id" value="@p.ID" />
+                                        <button type="submit" class="adm-btn adm-btn-danger adm-btn-sm">Obriši</button>
+                                    </form>
+                                </div>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+
+    </main>
+</div>

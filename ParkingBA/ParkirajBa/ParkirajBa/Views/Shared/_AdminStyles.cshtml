@@ -1,0 +1,33 @@
+﻿<link rel="stylesheet" href="/css/admin.css" />
+
+<div id="admConfirmOverlay" class="adm-confirm-overlay">
+    <div class="adm-confirm-box">
+        <h3 id="admConfirmTitle">Potvrda brisanja</h3>
+        <p id="admConfirmMsg">Jeste li sigurni da želite obrisati ovu stavku?</p>
+        <div class="adm-confirm-btns">
+            <button class="btn-cancel" onclick="admConfirmClose()">Odustani</button>
+            <button class="btn-confirm-del" id="admConfirmBtn">Obriši</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    let _pendingForm = null;
+    function admConfirm(formEl, title, msg) {
+        _pendingForm = formEl;
+        document.getElementById('admConfirmTitle').textContent = title || 'Potvrda brisanja';
+        document.getElementById('admConfirmMsg').textContent = msg || 'Jeste li sigurni?';
+        document.getElementById('admConfirmOverlay').classList.add('show');
+    }
+    function admConfirmClose() {
+        document.getElementById('admConfirmOverlay').classList.remove('show');
+        _pendingForm = null;
+    }
+    document.getElementById('admConfirmBtn').onclick = function () {
+        if (_pendingForm) _pendingForm.submit();
+        admConfirmClose();
+    };
+    document.getElementById('admConfirmOverlay').addEventListener('click', function (e) {
+        if (e.target === this) admConfirmClose();
+    });
+</script>

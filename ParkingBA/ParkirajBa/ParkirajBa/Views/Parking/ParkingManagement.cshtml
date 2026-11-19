@@ -1,0 +1,689 @@
+﻿@model List<ParkirajBa.Models.ParkingObject>
+
+@{
+    Layout = "_Layout";
+    ViewData["Title"] = "Upravljanje parkinzima";
+}
+
+<div class="app-container">
+
+    <div class="tabs">
+        <div class="tab">
+            <a href="/Home/Index">Mapa</a>
+        </div>
+
+        <div class="tab active">
+            <a href="/Parking/ParkingManagement">Objekti</a>
+        </div>
+
+        <div class="tab">
+            <a href="/Home/Rezervacije">Rezervacije</a>
+        </div>
+    </div>
+
+    <div class="management-container">
+
+        <div class="sidebar">
+            @{
+                var slike = ViewBag.Slike as Dictionary<int, string>;
+            }
+            @foreach (var parking in Model)
+            {
+                <div class="parking-card" data-id="@parking.ID">
+                    <img src="@(slike != null && slike.ContainsKey(parking.ID) ? slike[parking.ID] : "/images/parking.jpg")" />
+                    <div class="parking-info">
+                        <h4>@parking.name</h4>
+                        <p>@parking.address</p>
+                        <small>Slobodna mjesta: @parking.availableSpots / @parking.totalSpots</small>
+                    </div>
+                </div>
+            }
+            <button class="add-button" id="btnOpenCreate">
+                + Dodaj parking
+            </button>
+        </div>
+
+        <div class="editor-panel" id="editorContainer">
+            @await Html.PartialAsync("_ParkingCreate")
+        </div>
+
+    </div>
+</div>
+
+<style>
+    body {
+        margin: 0;
+        background: #f5f5f5;
+        font-family: 'Segoe UI';
+    }
+
+    /* TABS NAV */
+    .tabs {
+        display: flex;
+        gap: 10px;
+        padding: 15px 40px;
+        background: #f8f9fa;
+    }
+
+    .tab {
+        padding: 10px 20px;
+        border-radius: 30px;
+        background: #e9ecef;
+    }
+
+        .tab.active {
+            background: #6287f9;
+        }
+
+        .tab a {
+            color: black;
+            text-decoration: none;
+        }
+
+        .tab.active a {
+            color: white;
+        }
+
+    /* CONTAINER & SIDEBAR */
+    .management-container {
+        display: flex;
+        gap: 20px;
+        padding: 20px;
+    }
+
+    .sidebar {
+        width: 350px;
+        background: white;
+        border-radius: 12px;
+        padding: 15px;
+    }
+
+    /* PARKING CARDS */
+    .parking-card {
+        display: flex;
+        gap: 15px;
+        padding: 10px;
+        margin-bottom: 15px;
+        border-radius: 10px;
+        background: #f8f9fa;
+        cursor: pointer;
+    }
+
+        .parking-card img {
+            width: 90px;
+            height: 70px;
+            object-fit: cover;
+            border-radius: 8px;
+        }
+
+    .parking-info h4 {
+        margin: 0;
+    }
+
+    .add-button {
+        width: 100%;
+        padding: 12px;
+        border: none;
+        border-radius: 10px;
+        background: #6287f9;
+        color: white;
+        cursor: pointer;
+    }
+
+    /* EDITOR PANEL & FORM (Ovdje su spojeni stari i inline stilovi) */
+    .editor-panel {
+        flex: 1;
+        background: white;
+        border-radius: 16px;
+        padding: 28px 32px;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.07);
+        display: flex;
+        flex-direction: column;
+    }
+
+        .editor-panel h3 {
+            margin: 0 0 20px;
+            font-size: 18px;
+            font-weight: 600;
+            color: var(--text);
+        }
+
+    .editor-form {
+        display: flex;
+        flex-direction: column;
+        flex: 1;
+    }
+
+    .form-group {
+        margin-bottom: 14px;
+    }
+
+    .form-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 12px;
+        margin-bottom: 14px;
+    }
+
+    .form-label {
+        display: block;
+        font-size: 12px;
+        font-weight: 600;
+        margin-bottom: 5px;
+        color: #555;
+        text-transform: uppercase;
+        letter-spacing: 0.3px;
+    }
+
+    .form-input {
+        width: 100%;
+        padding: 10px 13px;
+        border: 1px solid #e0e0e0;
+        border-radius: 8px;
+        font-size: 14px;
+        box-sizing: border-box;
+        outline: none;
+    }
+
+    /* CHECKBOXES */
+    .checkbox-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 10px;
+        margin: 20px 0;
+    }
+
+    .checkbox-label {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 11px;
+        background: #f8f9fa;
+        border-radius: 8px;
+        cursor: pointer;
+    }
+
+        .checkbox-label input {
+            width: 15px;
+            height: 15px;
+        }
+
+        .checkbox-label span {
+            font-size: 13px;
+        }
+
+    /* FORM ACTIONS */
+    .form-actions {
+        display: flex;
+        justify-content: flex-end;
+        gap: 10px;
+        margin-top: auto;
+        padding-top: 10px;
+    }
+
+    .submit-button {
+        padding: 10px 26px;
+        background: #6287f9;
+        color: white;
+        border: none;
+        border-radius: 8px;
+        font-size: 14px;
+        font-weight: 600;
+        cursor: pointer;
+    }
+
+    /* VALIDATION */
+    .val-err {
+        color: #dc3545;
+        font-size: 12px;
+        display: block;
+        margin-top: 4px;
+    }
+</style>
+<script>
+    let selectedFiles = [];
+    let draggedItem = null;
+    let pricingRows = [];
+    async function uploadCoverImage() {
+        const fileInput = document.getElementById('coverImageInput');
+        const msg = document.getElementById('coverUploadMsg');
+        const idInput = document.querySelector('input[name="id"]');
+        const tokenEl = document.querySelector('input[name="__RequestVerificationToken"]');
+
+        if (!fileInput || !idInput) return;
+
+        if (!fileInput.files || fileInput.files.length === 0) {
+            if (msg) { msg.style.color = '#dc3545'; msg.innerText = 'Molimo odaberite sliku.'; }
+            return;
+        }
+
+        const formData = new FormData();
+        formData.append('Images', fileInput.files[0]);
+        formData.append('id', idInput.value);
+
+        try {
+            if (msg) { msg.style.color = '#555'; msg.innerText = 'Uploadovanje...'; }
+
+            const response = await fetch('/Parking/UploadCoverImage', {
+                method: 'POST',
+                body: formData,
+                headers: { 'RequestVerificationToken': tokenEl?.value ?? '' }
+            });
+
+            const result = await response.json();
+            if (result.success) {
+                if (msg) { msg.style.color = '#28a745'; msg.innerText = '✓ Slika uspješno uploadana!'; }
+                setTimeout(() => window.location.reload(), 1000);
+            } else {
+                if (msg) { msg.style.color = '#dc3545'; msg.innerText = result.message || 'Greška pri uploadu.'; }
+            }
+        } catch (err) {
+            if (msg) { msg.style.color = '#dc3545'; msg.innerText = 'Greška pri komunikaciji sa serverom.'; }
+            console.error(err);
+        }
+    }
+    // LOAD PARTIAL FORMS
+    async function loadForm(url) {
+        try {
+            const response = await fetch(url);
+            if (response.ok) {
+                const html = await response.text();
+                document.getElementById('editorContainer').innerHTML = html;
+
+                selectedFiles = [];
+                pricingRows = [];
+
+                const isEditForm = !!document.getElementById('parkingEditForm');
+                if (!isEditForm) initUploadLogic();
+                initPricingLogic();
+                attachValidation();
+            }
+        } catch (err) {
+            console.error("Greška pri učitavanju forme:", err);
+        }
+    }
+
+    // ========== UPLOAD LOGIKA ==========
+    function initUploadLogic() {
+        const dropZone = document.getElementById('dropZone');
+        const fileInput = document.getElementById('fileInput');
+
+        if (!dropZone || !fileInput) return;
+
+        dropZone.addEventListener('click', () => fileInput.click());
+
+        fileInput.addEventListener('change', (e) => {
+            handleFiles(e.target.files);
+            fileInput.value = "";
+        });
+
+        dropZone.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            dropZone.classList.add('drag-over');
+        });
+        dropZone.addEventListener('dragleave', () => dropZone.classList.remove('drag-over'));
+        dropZone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            dropZone.classList.remove('drag-over');
+            handleFiles(e.dataTransfer.files);
+        });
+    }
+
+    function handleFiles(files) {
+        for (let file of files) {
+            if (file.type.startsWith('image/')) {
+                file.tempId = Date.now() + Math.random().toString(36).substr(2, 9);
+                selectedFiles.push(file);
+            }
+        }
+        renderPreviews();
+    }
+
+    function renderPreviews() {
+        const container = document.getElementById('previewContainer');
+        if (!container) return;
+        container.innerHTML = "";
+
+        selectedFiles.forEach((file, index) => {
+            const reader = new FileReader();
+            reader.onload = function (e) {
+                const div = document.createElement('div');
+                div.classList.add('preview-item');
+                div.setAttribute('draggable', 'true');
+                div.setAttribute('data-id', file.tempId);
+
+                div.innerHTML = `
+                    <img src="${e.target.result}" alt="preview" />
+                    <button type="button" class="remove-btn" onclick="removeImage('${file.tempId}')">&times;</button>
+                    ${index === 0 ? '<span style="position:absolute; bottom:0; left:0; right:0; background:rgba(0,123,255,0.85); color:white; font-size:10px; text-align:center; padding: 2px 0;">NASLOVNA</span>' : ''}
+                `;
+
+                div.addEventListener('dragstart', function() {
+                    draggedItem = div;
+                    setTimeout(() => div.style.opacity = "0.5", 0);
+                });
+                div.addEventListener('dragend', function() {
+                    draggedItem = null;
+                    div.style.opacity = "1";
+                    recalcOrder();
+                });
+                div.addEventListener('dragover', (e) => e.preventDefault());
+                div.addEventListener('drop', function() {
+                    if (draggedItem !== div) {
+                        let children = Array.from(container.children);
+                        let draggedIdx = children.indexOf(draggedItem);
+                        let droppedIdx = children.indexOf(div);
+
+                        if (draggedIdx < droppedIdx) {
+                            container.insertBefore(draggedItem, div.nextSibling);
+                        } else {
+                            container.insertBefore(draggedItem, div);
+                        }
+                    }
+                });
+
+                container.appendChild(div);
+            }
+            reader.readAsDataURL(file);
+        });
+    }
+
+    function removeImage(tempId) {
+        selectedFiles = selectedFiles.filter(f => f.tempId !== tempId);
+        renderPreviews();
+    }
+
+    function recalcOrder() {
+        const currentOrderIds = Array.from(document.querySelectorAll('.preview-item'))
+            .map(el => el.getAttribute('data-id'));
+        let newOrderedFiles = [];
+
+        currentOrderIds.forEach(id => {
+            const file = selectedFiles.find(f => f.tempId === id);
+            if (file) newOrderedFiles.push(file);
+        });
+
+        selectedFiles = newOrderedFiles;
+        renderPreviews();
+    }
+
+    // ========== PRICING LOGIKA ==========
+    function initPricingLogic() {
+        const btnAdd = document.getElementById('btnAddPricing');
+        if (btnAdd) {
+            const newBtn = btnAdd.cloneNode(true);
+            btnAdd.replaceWith(newBtn);
+            document.getElementById('btnAddPricing').addEventListener('click', addPricingRow);
+        }
+    }
+
+    function addPricingRow() {
+        const container = document.getElementById('pricingContainer');
+        if (!container) return;
+
+        const rowId = Date.now();
+        const row = document.createElement('div');
+        row.className = 'pricing-row';
+        row.setAttribute('data-id', rowId);
+
+        row.innerHTML = `
+            <select name="pricingType" required>
+                <option value="">-- Odaberi tip --</option>
+                <option value="0">Po satu</option>
+                <option value="1">Po danu</option>
+                <option value="2">Sedmično</option>
+                <option value="3">Mjesečno</option>
+                <option value="4">Godišnje</option>
+            </select>
+            <input type="number" name="price" placeholder="Cijena" step="0.01" min="0" required />
+            <input type="text" name="validFrom" placeholder="Važeće od (opt.)" class="datepicker" />
+            <button type="button" class="remove-pricing-btn" onclick="removePricingRow(${rowId})">Obriši</button>
+        `;
+
+        container.appendChild(row);
+    }
+
+    function removePricingRow(rowId) {
+        const row = document.querySelector(`[data-id="${rowId}"]`);
+        if (row) row.remove();
+    }
+
+       // ========== VALIDACIJA I SUBMIT ==========
+    function attachValidation() {
+        const form = document.getElementById('parkingCreateForm') || document.getElementById('parkingEditForm');
+        if (!form) return;
+
+        form.addEventListener('submit', async function (e) {
+            e.preventDefault();
+
+            let valid = true;
+
+            const nameInput = document.getElementById('fieldName');
+            const spotsInput = document.getElementById('fieldSpots');
+            const heightInput = document.getElementById('fieldHeight');
+
+            const errName = document.getElementById('errName');
+            const errSpots = document.getElementById('errSpots');
+            const errHeight = document.getElementById('errHeight');
+
+            // Reset greške
+            if (errName) errName.innerText = "";
+            if (errSpots) errSpots.innerText = "";
+            if (errHeight) errHeight.innerText = "";
+
+            [nameInput, spotsInput, heightInput].forEach(input => {
+                if (input) input.style.borderColor = "";
+            });
+
+            // Validacija imena
+            if (nameInput && nameInput.value.trim() === "") {
+                valid = false;
+                nameInput.style.borderColor = "#dc3545";
+                if (errName) errName.innerText = "Naziv parkinga je obavezan.";
+            }
+
+            // Validacija mjesta
+            if (spotsInput) {
+                const spotsValue = parseInt(spotsInput.value);
+                if (spotsInput.value.trim() === "") {
+                    valid = false;
+                    spotsInput.style.borderColor = "#dc3545";
+                    if (errSpots) errSpots.innerText = "Unesite ukupan broj parking mjesta.";
+                } else if (isNaN(spotsValue) || spotsValue < 1) {
+                    valid = false;
+                    spotsInput.style.borderColor = "#dc3545";
+                    if (errSpots) errSpots.innerText = "Broj mjesta mora biti minimalno 1.";
+                }
+            }
+
+            // Validacija visine
+            if (heightInput && heightInput.value.trim() !== "") {
+                const heightValue = parseFloat(heightInput.value);
+                if (isNaN(heightValue) || heightValue <= 0) {
+                    valid = false;
+                    heightInput.style.borderColor = "#dc3545";
+                    if (errHeight) errHeight.innerText = "Maksimalna visina mora biti veća od 0 m.";
+                }
+            }
+
+            // Validacija adrese
+            const addressInput = document.getElementById('fieldAddress');
+            if (addressInput && addressInput.value.trim() === "") {
+                valid = false;
+                addressInput.style.borderColor = "#dc3545";
+                // dodaj span za grešku ispod adrese u _ParkingCreate i _ParkingEdit
+                const errAddress = document.getElementById('errAddress');
+                if (errAddress) errAddress.innerText = "Adresa je obavezna.";
+            }
+
+            // Validacija koordinata
+            const latInput = document.getElementById('fieldLatitude');
+            const lonInput = document.getElementById('fieldLongitude');
+            const errCoords = document.getElementById('errCoords');
+
+            if (!latInput.value.trim() || !lonInput.value.trim()) {
+                valid = false;
+                if (!latInput.value.trim()) latInput.style.borderColor = "#dc3545";
+                if (!lonInput.value.trim()) lonInput.style.borderColor = "#dc3545";
+                if (errCoords) errCoords.innerText = "Koordinate (širina i dužina) su obavezne.";
+            } else {
+                const lat = parseFloat(latInput.value);
+                const lon = parseFloat(lonInput.value);
+                if (isNaN(lat) || lat < -90 || lat > 90) {
+                    valid = false;
+                    latInput.style.borderColor = "#dc3545";
+                    if (errCoords) errCoords.innerText = "Geografska širina mora biti između -90 i 90.";
+                } else if (isNaN(lon) || lon < -180 || lon > 180) {
+                    valid = false;
+                    lonInput.style.borderColor = "#dc3545";
+                    if (errCoords) errCoords.innerText = "Geografska dužina mora biti između -180 i 180.";
+                }
+            }
+
+            // Validacija   redova
+            const pricingRowsList = document.querySelectorAll('.pricing-row');
+            let pricingValid = true;
+            pricingRowsList.forEach((row) => {
+                const type = row.querySelector('[name="pricingType"]').value;
+                const price = row.querySelector('[name="price"]').value;
+                if (!type) {
+                    pricingValid = false;
+                    row.querySelector('[name="pricingType"]').style.borderColor = "#dc3545";
+                }
+                if (!price || parseFloat(price) < 0) {
+                    pricingValid = false;
+                    row.querySelector('[name="price"]').style.borderColor = "#dc3545";
+                }
+            });
+            if (!pricingValid) {
+                valid = false;
+                const errPricing = document.getElementById('errPricing');
+                if (errPricing) errPricing.innerText = "Molimo ispravite greške u cijenama.";
+            }
+            // Validacija radnog vremena
+            const opensAt = document.getElementById('fieldOpensAt');
+            const closesAt = document.getElementById('fieldClosesAt');
+
+            if (opensAt && closesAt) {
+                const opensVal = opensAt.value.trim();
+                const closesVal = closesAt.value.trim();
+
+                if (opensVal && !closesVal) {
+                    valid = false;
+                    closesAt.style.borderColor = "#dc3545";
+                    const errTime = document.getElementById('errTime');
+                    if (errTime) errTime.innerText = "Morate unijeti i vrijeme zatvaranja.";
+                } else if (!opensVal && closesVal) {
+                    valid = false;
+                    opensAt.style.borderColor = "#dc3545";
+                    const errTime = document.getElementById('errTime');
+                    if (errTime) errTime.innerText = "Morate unijeti i vrijeme otvaranja.";
+                } else if (opensVal && closesVal && opensVal >= closesVal) {
+                    valid = false;
+                    closesAt.style.borderColor = "#dc3545";
+                    const errTime = document.getElementById('errTime');
+                    if (errTime) errTime.innerText = "Vrijeme zatvaranja mora biti nakon vremena otvaranja.";
+                } else {
+                    if (opensAt) opensAt.style.borderColor = "";
+                    if (closesAt) closesAt.style.borderColor = "";
+                }
+            }
+            if (valid) {
+                const latValue = document.getElementById('fieldLatitude').value;
+                const lonValue = document.getElementById('fieldLongitude').value;
+                const heightValue = document.getElementById('fieldHeight').value;
+                const idInput = form.querySelector('[name="id"]');
+                const opensAtInput = document.getElementById('fieldOpensAt');
+                const closesAtInput = document.getElementById('fieldClosesAt');
+
+                const parkingData = {
+                    id: idInput ? parseInt(idInput.value) : 0,
+                    name: document.getElementById('fieldName').value,
+                    address: document.getElementById('fieldAddress').value || '',
+                    latitude: latValue ? parseFloat(latValue.replace(',', '.')) : 0,
+                    longitude: lonValue ? parseFloat(lonValue.replace(',', '.')) : 0,
+                    totalSpots: parseInt(document.getElementById('fieldSpots').value),
+                    maxHeight: heightValue ? parseFloat(heightValue) : null,
+                    hasCameras: document.querySelector('[name="hasCameras"]')?.checked ?? false,
+                    isDisabledAccessible: document.querySelector('[name="isDisabledAccessible"]')?.checked ?? false,
+                    hasEVCharger: document.querySelector('[name="hasEVCharger"]')?.checked ?? false,
+                    isUnderground: document.querySelector('[name="isUnderground"]')?.checked ?? false,
+                    opensAt: opensAtInput?.value ? `${new Date().toISOString().split('T')[0]}T${opensAtInput.value}:00` : null,
+                    closesAt: closesAtInput?.value ? `${new Date().toISOString().split('T')[0]}T${closesAtInput.value}:00` : null
+                };
+
+                const formData = new FormData();
+
+                Object.keys(parkingData).forEach(key => {
+                    if (parkingData[key] !== null && parkingData[key] !== undefined) {
+                        formData.append(key, parkingData[key]);
+                    }
+                });
+
+                selectedFiles.forEach((file, index) => {
+                    formData.append('Images', file);
+                    formData.append(`ImagePositions[${index}]`, index + 1);
+                });
+
+                const pricingRowsEl = document.querySelectorAll('.pricing-row');
+                let pricingIndex = 0;
+                pricingRowsEl.forEach((row) => {
+                    const type = row.querySelector('[name="pricingType"]').value;
+                    const price = row.querySelector('[name="price"]').value;
+                    const validFrom = row.querySelector('[name="validFrom"]').value;
+
+                    if (type && price) {
+                        formData.append(`Pricings[${pricingIndex}].pricingType`, parseInt(type));
+                        formData.append(`Pricings[${pricingIndex}].price`, parseFloat(price));
+                        if (validFrom && validFrom.trim() !== "") {
+                            formData.append(`Pricings[${pricingIndex}].validFrom`, validFrom);
+                        }
+                        pricingIndex++;
+                    }
+                });
+
+                const url = form.getAttribute('action');
+
+                try {
+                    const response = await fetch(url, {
+                        method: 'POST',
+                        body: formData,
+                        headers: {
+                            'RequestVerificationToken': document.querySelector('input[name="__RequestVerificationToken"]').value
+                        }
+                    });
+                    const successMsg = document.createElement('div');
+                    successMsg.style.cssText = 'background:#f0fdf4;color:#16a34a;border:1px solid #bbf7d0;border-radius:10px;padding:12px 16px;margin-bottom:20px;font-size:14px;';
+                    successMsg.textContent = '✓ Parking je uspješno ažuriran.';
+                    const editorPanel = document.getElementById('editorContainer');
+                    editorPanel.insertBefore(successMsg, editorPanel.firstChild);
+                    setTimeout(() => window.location.reload(), 1500);
+                } catch (err) {
+                    console.error("Greška:", err);
+                    alert("Greška pri komunikaciji sa serverom.");
+                }
+            }
+        });
+    }
+
+    // EVENT LISTENERI
+    document.querySelectorAll('.parking-card').forEach(card => {
+        card.addEventListener('click', function() {
+            loadForm(`/Parking/GetEditForm?id=${this.getAttribute('data-id')}`);
+        });
+    });
+
+    const btnOpenCreate = document.getElementById('btnOpenCreate');
+    if (btnOpenCreate) {
+        btnOpenCreate.addEventListener('click', () => loadForm('/Parking/GetCreateForm'));
+    }
+
+    // INICIJALIZACIJA
+    document.addEventListener("DOMContentLoaded", function() {
+        initUploadLogic();
+        initPricingLogic();
+        attachValidation();
+    });
+</script>
+
+

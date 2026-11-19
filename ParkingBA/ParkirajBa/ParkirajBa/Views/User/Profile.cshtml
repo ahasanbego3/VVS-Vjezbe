@@ -1,0 +1,85 @@
+﻿@model ParkirajBa.Models.ApplicationUser
+
+@{
+    Layout = "_Layout";
+    ViewData["Title"] = "Profil";
+}
+
+<div class="profile-page">
+
+    <div class="profile-card">
+
+        <h2>Upravljanje profilom</h2>
+
+        @if (TempData["Success"] != null)
+        {
+            <div class="success-message">
+                @TempData["Success"]
+            </div>
+        }
+
+        @if (ViewBag.Error != null)
+        {
+            <div class="error-message">
+                @ViewBag.Error
+            </div>
+        }
+
+        @* Dodajemo novalidate da pretraživač ne miješa svoje poruke *@
+        <form method="post" novalidate>
+
+            <label>Ime</label>
+            <input type="text" asp-for="FirstName"
+                   minlength="2" maxlength="50"
+                   oninvalid="this.setCustomValidity('Ime mora imati između 2 i 50 slova.')"
+                   oninput="this.setCustomValidity('')" />
+            <span asp-validation-for="FirstName" class="text-danger" style="font-size:12px;display:block;margin-top:5px;margin-bottom:10px;color:#ff6b6b;text-align:left;"></span>
+
+            <label>Prezime</label>
+            <input type="text" asp-for="LastName"
+                   minlength="2" maxlength="50"
+                   oninvalid="this.setCustomValidity('Prezime mora imati između 2 i 50 slova.')"
+                   oninput="this.setCustomValidity('')" />
+            <span asp-validation-for="LastName" class="text-danger" style="font-size:12px;display:block;margin-top:5px;margin-bottom:10px;color:#ff6b6b;text-align:left;"></span>
+
+            <label>Trenutna lozinka</label>
+            <input type="password" name="currentPassword"
+                   oninvalid="this.setCustomValidity('Molimo unesite trenutnu lozinku.')"
+                   oninput="this.setCustomValidity('')" />
+
+            <label>Nova lozinka</label>
+            <input type="password" name="newPassword" id="newPassword" minlength="8"
+                   oninvalid="this.setCustomValidity('Lozinka mora imati najmanje 8 znakova.')"
+                   oninput="this.setCustomValidity('')" />
+
+            <label>Potvrdi novu lozinku</label>
+            <input type="password" name="confirmPassword" id="confirmPassword"
+                   oninvalid="this.setCustomValidity('Molimo potvrdite novu lozinku.')"
+                   oninput="this.setCustomValidity('')" />
+
+            <button type="submit">
+                Spremi promjene
+            </button>
+
+        </form>
+
+    </div>
+
+</div>
+
+@section Scripts {
+    @await Html.PartialAsync("_ValidationScriptsPartial")
+    <script>
+        document.querySelector('form').addEventListener('submit', function (e) {
+            const nova = document.getElementById('newPassword').value;
+            const potvrda = document.getElementById('confirmPassword').value;
+            if (nova && nova !== potvrda) {
+                e.preventDefault();
+                document.getElementById('confirmPassword').setCustomValidity('Lozinke se ne poklapaju.');
+                document.getElementById('confirmPassword').reportValidity();
+            } else {
+                document.getElementById('confirmPassword').setCustomValidity('');
+            }
+        });
+    </script>
+}

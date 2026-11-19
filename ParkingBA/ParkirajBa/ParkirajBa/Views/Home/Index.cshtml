@@ -1,0 +1,821 @@
+﻿@model List<ParkirajBa.Models.ParkingObject>
+
+@{
+    Layout = "_Layout";
+    ViewData["Title"] = "ParkirajBa";
+    var apiKey = ViewData["GoogleMapsApiKey"] as string;
+}
+
+<div class="app-container" id="appContainer">
+
+    <div class="tabs">
+        <div class="tab active">
+            <a href="/Home/Index">Mapa</a>
+        </div>
+        <div class="tab">
+            <a href="/Home/Objekti">Objekti</a>
+        </div>
+        <div class="tab">
+            <a href="/Home/Rezervacije">Rezervacije</a>
+        </div>
+    </div>
+
+    <div class="filters">
+        <div class="filter-search-wrap">
+            <svg class="filter-search-icon" viewBox="0 0 24 24" width="16" height="16" fill="#aaa"><path d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z" /></svg>
+            <input type="text" id="SearchInput" placeholder="Pretraži parking..." />
+        </div>
+
+        <div class="filter-pills">
+            <label class="filter-pill" id="pill-garage">
+                <input type="checkbox" id="HasGarage" hidden />
+                <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><path d="M20 4H4v2l8 5 8-5V4zm0 4.55L12 13 4 8.55V20h16V8.55z" /></svg>
+                Garaža
+            </label>
+            <label class="filter-pill" id="pill-ev">
+                <input type="checkbox" id="HasEVCharger" hidden />
+                <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><path d="M7 2v11h3v9l7-12h-4l4-8z" /></svg>
+                EV punjač
+            </label>
+            <label class="filter-pill" id="pill-cam">
+                <input type="checkbox" id="HasCameras" hidden />
+                <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><path d="M17 10.5V7c0-.55-.45-1-1-1H4c-.55 0-1 .45-1 1v10c0 .55.45 1 1 1h12c.55 0 1-.45 1-1v-3.5l4 4v-11l-4 4z" /></svg>
+                Video nadzor
+            </label>
+            <label class="filter-pill" id="pill-acc">
+                <input type="checkbox" id="isDisabledAccessible" hidden />
+                <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><path d="M12 2c1.1 0 2 .9 2 2s-.9 2-2 2-2-.9-2-2 .9-2 2-2zm9 7h-6v13h-2v-6h-2v6H9V9H3V7h18v2z" /></svg>
+                Invalidski pristup
+            </label>
+        </div>
+
+        <div class="filter-right">
+            <div class="filter-price-wrap">
+                <span class="filter-price-label">Do KM</span>
+                <input type="number" id="PriceOutput" value="50" min="1" style="width: 60px; padding: 6px; border-radius: 4px; border: 1px solid #e0e0e0; font-size: 13px;" />
+                <input type="range" id="PriceSlider" min="1" max="50" value="50" />
+            </div>
+
+            <select id="regime" class="filter-select">
+                <option value="Hour">Po satu</option>
+                <option value="Day">Po danu</option>
+                <option value="Week">Po sedmici</option>
+                <option value="Month">Po mjesecu</option>
+                <option value="Year">Po godini</option>
+            </select>
+
+            <button id="ClearButton">
+                <svg viewBox="0 0 24 24" width="13" height="13" fill="currentColor"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z" /></svg>
+                Očisti
+            </button>
+        </div>
+    </div>
+
+    <div class="content">
+
+        <div class="sidebar" id="ParkingSidebar">
+        </div>
+
+        <div id="map"></div>
+
+    </div>
+</div>
+
+
+<style>
+    .app-container {
+        display: flex;
+        flex-direction: column;
+        height: calc(100vh - 64px);
+        overflow: hidden;
+    }
+
+    .content {
+        display: flex;
+        flex: 1;
+        overflow: hidden;
+    }
+
+    #map {
+        flex: 1;
+        height: 100%;
+        width: 100%;
+        border-radius: 0;
+    }
+
+    .filters output {
+        font-weight: 600;
+        color: var(--accent);
+        min-width: 28px;
+    }
+
+    #ClearButton {
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+        padding: 7px 14px;
+        border-radius: 20px;
+        border: 1px solid var(--border);
+        background: var(--surface2);
+        color: var(--text2);
+        cursor: pointer;
+        font-size: 12px;
+        font-weight: 500;
+        white-space: nowrap;
+    }
+
+        #ClearButton:hover {
+            border-color: var(--accent);
+            color: var(--accent);
+        }
+
+    /* Filter bar layout */
+    .filters {
+        padding: 10px 24px;
+        background: white;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        border-bottom: 1px solid #eee;
+        flex-wrap: wrap;
+    }
+
+    .filter-search-wrap {
+        position: relative;
+        display: flex;
+        align-items: center;
+    }
+
+    .filter-search-icon {
+        position: absolute;
+        left: 10px;
+        pointer-events: none;
+    }
+
+    .filter-search-wrap input[type="text"] {
+        background: #f8f9fa;
+        border: 1px solid #e0e0e0;
+        padding: 8px 14px 8px 34px;
+        border-radius: 20px;
+        outline: none;
+        font-family: inherit;
+        font-size: 13px;
+        width: 200px;
+        transition: border-color 0.2s;
+    }
+
+        .filter-search-wrap input[type="text"]:focus {
+            border-color: #6287f9;
+            background: white;
+        }
+
+    .filter-pills {
+        display: flex;
+        gap: 6px;
+        flex-wrap: wrap;
+    }
+
+    .filter-pill {
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+        padding: 6px 13px;
+        border-radius: 20px;
+        border: 1px solid #e0e0e0;
+        background: #f8f9fa;
+        color: #555;
+        font-size: 12px;
+        font-weight: 500;
+        cursor: pointer;
+        transition: all 0.18s;
+        user-select: none;
+        white-space: nowrap;
+    }
+
+        .filter-pill:hover {
+            border-color: #6287f9;
+            color: #6287f9;
+        }
+
+        .filter-pill.active {
+            background: #eef1ff;
+            border-color: #6287f9;
+            color: #6287f9;
+        }
+
+    .filter-right {
+        margin-left: auto;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+
+    .filter-price-wrap {
+        display: flex;
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 2px;
+    }
+
+    .filter-price-label {
+        font-size: 11px;
+        color: #888;
+        font-weight: 500;
+    }
+
+        .filter-price-label output {
+            font-weight: 700;
+            color: #6287f9;
+        }
+
+    .filter-price-wrap input[type="range"] {
+        width: 100px;
+    }
+
+    .filter-select {
+        padding: 7px 10px;
+        border-radius: 20px;
+        border: 1px solid #e0e0e0;
+        background: #f8f9fa;
+        color: #555;
+        font-size: 12px;
+        font-family: inherit;
+        cursor: pointer;
+        outline: none;
+    }
+
+        .filter-select:focus {
+            border-color: #6287f9;
+        }
+</style>
+<style>
+    body {
+        margin: 0;
+        font-family: 'GoogleSans', 'Segoe UI', Arial, sans-serif;
+        background-color: #f4f7f6;
+    }
+
+    .tabs {
+        display: flex;
+        gap: 10px;
+        padding: 15px 40px;
+        background: #f8f9fa;
+    }
+
+    .tab {
+        padding: 10px 20px;
+        border-radius: 30px;
+        font-weight: 500;
+        color: #666;
+        transition: 0.3s;
+    }
+
+        .tab.active {
+            background: #6287f9;
+            color: white;
+            box-shadow: 0 4px 10px rgba(98, 135, 249, 0.3);
+        }
+
+    .dropdown {
+        display: none;
+        position: absolute;
+        right: 0;
+        top: 45px;
+        background: white;
+        border: 1px solid #ddd;
+        border-radius: 6px;
+        overflow: hidden;
+        min-width: 120px;
+    }
+
+        .dropdown a {
+            display: block;
+            padding: 10px;
+            text-decoration: none;
+            color: black;
+        }
+
+            .dropdown a:hover {
+                background: #eee;
+            }
+
+    .nav {
+        display: flex;
+        background: #eaeaea;
+    }
+
+    .nav-item {
+        flex: 1;
+        text-align: center;
+        padding: 12px;
+        cursor: pointer;
+    }
+
+        .nav-item.active {
+            background: #1e5cc3;
+            color: white;
+        }
+
+    .sidebar {
+        width: 300px;
+        min-width: 300px;
+        background: white;
+        padding: 8px;
+        overflow-y: auto;
+        overflow-x: hidden;
+        z-index: 5;
+        border-right: 1px solid #eee;
+        height: 100%;
+        box-sizing: border-box;
+    }
+
+    .card {
+        display: flex;
+        gap: 15px;
+        padding: 15px;
+        margin: 10px;
+        border-radius: 12px;
+        background: white;
+        transition: 0.2s;
+        border: 1px solid transparent;
+        text-decoration: none;
+        color: inherit;
+        cursor: pointer;
+    }
+
+        .card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            border-color: #e0e0e0;
+        }
+
+        .card h4 {
+            margin: 0 0 5px 0;
+            font-size: 16px;
+            color: #222;
+        }
+
+        .card p {
+            margin: 0 0 8px 0;
+            font-size: 13px;
+            color: #666;
+        }
+
+        .card img {
+            width: 80px;
+            height: 60px;
+            object-fit: cover;
+            border-radius: 6px;
+            background: #eee;
+        }
+
+    .card.selected {
+        background-color: #e3f2fd; 
+        border: 2px solid #2196f3; 
+    }
+
+
+    .spots-badge {
+        display: inline-block;
+        padding: 4px 8px;
+        font-size: 11px;
+        font-weight: 600;
+        border-radius: 6px;
+    }
+
+    .map {
+        flex: 1;
+        position: relative;
+    }
+
+        .map img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+    .custom-overlay {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background-image: url('/images/backgroundColor.png');
+        background-position: center;
+        background-size: cover;
+        opacity: 0.4;
+        pointer-events: none;
+    }
+
+    input[type="range"] {
+        accent-color: #6287f9;
+    }
+
+    #PriceOutput {
+        outline: none;
+    }
+
+        #PriceOutput:focus {
+            border-color: #6287f9;
+        }
+</style>
+
+@section Scripts {
+    <script>
+        function toggleDropdown() {
+            var d = document.getElementById("dropdown");
+            d.style.display = d.style.display === "block" ? "none" : "block";
+        }
+
+        window.onclick = function (e) {
+            if (!e.target.closest('.profile')) {
+                var dropdown = document.getElementById("dropdown");
+                if (dropdown) {
+                    dropdown.style.display = "none";
+                }
+            }
+        }
+    </script>
+
+    <script>
+        (g => { var h, a, k, p = "The Google Maps JavaScript API", c = "google", l = "importLibrary", q = "__ib__", m = document, b = window; b = b[c] || (b[c] = {}); var d = b.maps || (b.maps = {}), r = new Set, e = new URLSearchParams, u = () => h || (h = new Promise(async (f, n) => { await (a = m.createElement("script")); e.set("libraries", [...r] + ""); for (k in g) e.set(k.replace(/[A-Z]/g, t => "_" + t[0].toLowerCase()), g[k]); e.set("callback", c + ".maps." + q); a.src = `https://maps.${c}apis.com/maps/api/js?` + e; d[q] = f; a.onerror = () => h = n(Error(p + " could not load.")); a.nonce = m.querySelector("script[nonce]")?.nonce || ""; m.head.append(a) })); d[l] ? console.warn(p + " only loads once. Ignoring:", g) : d[l] = (f, ...n) => r.add(f) && u().then(() => d[l](f, ...n)) })({
+            key: "@apiKey",
+            v: "weekly"
+        });
+    </script>
+
+    <script>
+        async function Init() {
+            const mapsLibrary = await google.maps.importLibrary('maps');
+            const markerLibrary = await google.maps.importLibrary("marker");
+
+            const Map = mapsLibrary.Map;
+            InfoWindow = mapsLibrary.InfoWindow;
+            AdvancedMarkerElement = markerLibrary.AdvancedMarkerElement;
+            PinElement = markerLibrary.PinElement;
+
+            const startPosition = { lat: 43.8563, lng: 18.4131 }; // Sarajevo
+
+            map = new Map(document.getElementById('map'), {
+                center: startPosition,
+                zoom: 14,
+                renderingType: 'VECTOR',
+                mapId: "DEMO_MAP_ID"
+            });
+
+            await LoadMarkers(parkingLocations);
+        }
+
+        async function LoadMarkers(locations) {
+            if (!locations || locations.length === 0) {
+                console.log("No parking objects in DataBase.");
+                return;
+            }
+
+            for (let location of locations) {
+                const position = {
+                    lat: parseFloat(location.latitude),
+                    lng: parseFloat(location.longitude)
+                };
+
+                let backgroundColor;
+                let mapStatusText = "Slobodno";
+
+                if (location.availableSpots <= 0) {
+                    backgroundColor = "#FF0000";
+                    mapStatusText = "Popunjeno";
+                } else {
+                    backgroundColor = "#28a745";
+                }
+
+                const pinDesign = new PinElement({
+                    background: backgroundColor,
+                    borderColor: "#ffffff",
+                    glyphColor: "#ffffff"
+                });
+
+                const marker = new AdvancedMarkerElement({
+                    map: map,
+                    position: position,
+                    title: location.name,
+                    content: pinDesign.element
+                });
+
+                parkingMarkers.push(marker);
+
+                const formatTime = (timeString) => {
+                    if (!timeString) return null;
+                    const date = new Date(timeString);
+                    if (!isNaN(date.getTime())) {
+                        return date.toLocaleTimeString('bs-BA', { hour: '2-digit', minute: '2-digit' });
+                    }
+                    return timeString.substring(0, 5);
+                };
+
+                const openingTime = formatTime(location.opensAt) || '00:00';
+                const closingTime = formatTime(location.closesAt) || '24:00';
+
+                const info = new InfoWindow();
+
+                marker.addListener("click", async () => {
+                    if(selectedInfoPanel != null)
+                        selectedInfoPanel.close();
+
+                    let price = 0;
+                    try {
+                        const priceResponse = await fetch(`/Home/GetParkingPrice?parkingId=${location.id}&regime=${regime}`);
+                        price = await priceResponse.json();
+                    } catch (error) {
+                        console.error("Error fetching price:", error);
+                    }
+
+                    const infoContent = `
+                        <a href='/Parking/Details/${location.id}' style="text-decoration: none; color: inherit; display: block;">
+                            <div style="min-width: 170px; padding: 4px; font-family: system-ui, -apple-system, sans-serif;">
+                                <h5 style="margin: 0 0 10px 0; font-size: 15px; color: #1e293b; border-bottom: 1px solid #e2e8f0; padding-bottom: 6px;">
+                                    ${location.name}
+                                </h5>
+                                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                                    <span style="font-size: 13px; color: #64748b;">Status:</span>
+                                    <strong style="color: ${backgroundColor}; font-size: 13px;">
+                                        ${mapStatusText}
+                                    </strong>
+                                </div>
+                                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                                    <span style="font-size: 13px; color: #64748b;">Cijena:</span>
+                                    <strong style="font-size: 13px; color: #6287f9;">
+                                        💰 ${price > 0 ? price.toFixed(2) : 'N/A'} KM
+                                    </strong>
+                                </div>
+                                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+                                    <span style="font-size: 13px; color: #64748b;">Otvoreno:</span>
+                                    <strong style="font-size: 13px; color: #334155;">
+                                        🕒 ${openingTime}
+                                    </strong>
+                                </div>
+                                <div style="display: flex; justify-content: space-between; align-items: center;">
+                                    <span style="font-size: 13px; color: #64748b;">Zatvoreno:</span>
+                                    <strong style="font-size: 13px; color: #334155;">
+                                        🚪 ${closingTime}
+                                    </strong>
+                                </div>
+                            </div>
+                        </a>
+                    `;
+
+                    info.setContent(infoContent);
+                    info.open(map, marker);
+                    selectedInfoPanel = info;
+                    MoveCardToTop(location.id);
+                });
+
+                info.addListener("closeclick", () => {
+                    UnselectParking();
+                });
+            }
+        }
+
+        async function RefreshMap(locations) {
+            parkingMarkers.forEach(marker => {
+                marker.map = null;
+            });
+            parkingMarkers = [];
+
+            await LoadMarkers(locations);
+        }
+
+        function ReadFilterValues() {
+            searchText = document.getElementById("SearchInput").value;
+            hasGarage = document.getElementById("HasGarage").checked;
+            hasEVCharger = document.getElementById("HasEVCharger").checked;
+            hasCameras = document.getElementById("HasCameras").checked;
+            isDisabledAccessible = document.getElementById("isDisabledAccessible").checked;
+            regime = document.getElementById("regime").value;
+            maxPrice = document.getElementById("PriceSlider").value;
+        }
+
+        async function SearchParking() {
+            ReadFilterValues();
+
+            const url = `/Home/Search?searchText=${encodeURIComponent(searchText)}&hasGarage=${hasGarage}&hasEvCharger=${hasEVCharger}&hasCameras=${hasCameras}&isDisabledAccessible=${isDisabledAccessible}&regime=${regime}&maxPrice=${maxPrice}`;
+            try {
+                const response = await fetch(url);
+                if (!response.ok) throw new Error("Server error occurred.");
+
+                const filteredData = await response.json();
+
+                await RefreshMap(filteredData);
+                await LoadSidebar(filteredData);
+
+            } catch (error) {
+                console.error("Error during parking search:", error);
+            }
+        }
+
+        async function clearFilter() {
+            document.getElementById("SearchInput").value = "";
+            document.getElementById("HasGarage").checked = false;
+            document.getElementById("HasEVCharger").checked = false;
+            document.getElementById("HasCameras").checked = false;
+            document.getElementById("isDisabledAccessible").checked = false;
+            document.getElementById("regime").value = "Hour";
+
+            // Učitaj max cijenu za Hour regime iz baze
+            let maxPrice = 50; // default ako učitavanje ne uspije
+            try {
+                const response = await fetch(`/Home/GetMaxPriceForRegime?regime=Hour`);
+                maxPrice = await response.json();
+            } catch (error) {
+                console.error("Error fetching max price:", error);
+            }
+
+            const slider = document.getElementById("PriceSlider");
+            slider.max = maxPrice;
+            slider.value = maxPrice;
+            document.getElementById("PriceOutput").value = maxPrice;
+
+            // sync pill states
+            document.querySelectorAll('.filter-pill').forEach(p => p.classList.remove('active'));
+
+            RefreshMap(parkingLocations);
+            LoadSidebar(parkingLocations);
+        }
+
+        async function GetPrimaryParkingImage(Parking) {
+            const GetterPath = `/Home/GetPrimaryParkingImage?parkingID=${Parking.id}`;
+            try {
+                const response = await fetch(GetterPath);
+                if (!response.ok) throw new Error("Server error occurred.");
+                return await response.json();
+            } catch (error) {
+                console.error("Error while retrieving image:", error);
+                return null;
+            }
+        }
+
+        async function CreateCard(Parking, Image) {
+            const isFull = Parking.availableSpots <= 0;
+
+            const backgroundColor = isFull ? "#fde8e8" : "#e8f5e9";
+            const color = isFull ? "#c0392b" : "#27ae60";
+            const spotsText = isFull ? "Popunjeno" : `${Parking.availableSpots} slobodnih`;
+
+            const imageSrc = (Image && Image.imagePath) ? Image.imagePath : "/images/Parkings/NoImageAvailable.png";
+
+            return `
+                        <a href="/Parking/Details/${Parking.id}" class="card" id="CardForId${Parking.id}">
+                            <img src="${imageSrc}" alt="${Parking.name}" />
+                            <div>
+                                <h4>${Parking.name || 'Nepoznat naziv'}</h4>
+                                <p>${Parking.address || ''}</p>
+                                <span class="spots-badge" style="background:${backgroundColor}; color:${color};">
+                                    ${spotsText}
+                                </span>
+                            </div>
+                        </a>
+                    `;
+        }
+
+
+        function UnselectParking(){
+            if(selectedCard==null)
+                return;
+            selectedCard.classList.remove('selected');
+            selectedCard=null;
+        }
+
+        function SelectParking(){
+            if(selectedCard==null)
+                return;
+            selectedCard.classList.add('selected');
+        }
+
+        function MoveCardToTop(ParkingID) {
+            UnselectParking();
+
+            const cardToMove = document.getElementById(`CardForId${ParkingID}`);
+            
+            const sidebar = document.getElementById("ParkingSidebar");
+         
+            if (cardToMove && sidebar) {
+                sidebar.insertAdjacentElement('afterbegin', cardToMove);
+            }
+            selectedCard=cardToMove;
+            SelectParking();
+        }
+
+        async function LoadSidebar(Locations) {
+            const sidebar = document.getElementById("ParkingSidebar");
+            sidebar.innerHTML = '';
+
+            if (!Locations || Locations.length === 0) {
+                sidebar.innerHTML = '<p class="no-data" style="padding: 20px; color: #777;">Nema pronađenih parkinga.</p>';
+                return;
+            }
+
+            for (let p of Locations) {
+                const Image = await GetPrimaryParkingImage(p);
+                const Card = await CreateCard(p, Image);
+                sidebar.innerHTML += Card;
+            }
+        }
+
+        const parkingLocations = @Html.Raw(Json.Serialize(Model));
+        let parkingMarkers = [];
+
+        let AdvancedMarkerElement;
+        let PinElement;
+        let InfoWindow;
+
+        LoadSidebar(parkingLocations);
+
+        let map;
+
+        let selectedInfoPanel;
+        let selectedCard;
+
+        let AllowMap = 1;
+
+        if (AllowMap != 0) {
+            Init();
+
+            document.getElementById("SearchInput").addEventListener("keydown", function (event) {
+                if (event.key === "Enter") {
+                    event.preventDefault();
+                    SearchParking();
+                }
+            });
+
+            // pill toggle active state on checkbox change
+            [
+                ["HasGarage", "pill-garage"],
+                ["HasEVCharger", "pill-ev"],
+                ["HasCameras", "pill-cam"],
+                ["isDisabledAccessible", "pill-acc"]
+            ].forEach(([cbId, pillId]) => {
+                document.getElementById(cbId).addEventListener("change", function () {
+                    document.getElementById(pillId).classList.toggle("active", this.checked);
+                    SearchParking();
+                });
+            });
+
+                    // Regime change - fetch max price and update slider
+        document.getElementById("regime").addEventListener("change", async function() {
+            const pricingType = this.value;
+            try {
+                const response = await fetch(`/Home/GetMaxPriceForRegime?regime=${pricingType}`);
+                const maxPrice = await response.json();
+                const slider = document.getElementById("PriceSlider");
+                slider.max = maxPrice;
+                slider.value = maxPrice;
+                document.getElementById("PriceOutput").value = maxPrice;
+            } catch (error) {
+                console.error("Error fetching max price:", error);
+            }
+            SearchParking();
+        });
+
+        // Price input change
+        document.getElementById("PriceOutput").addEventListener("change", function() {
+            const slider = document.getElementById("PriceSlider");
+            const inputValue = parseInt(this.value) || 50;
+            if (inputValue > parseInt(slider.max)) {
+                slider.max = inputValue;
+            }
+            slider.value = inputValue;
+            SearchParking();
+        });
+
+        // Slider change
+        // Slider change with debounce
+        let priceSearchTimeout;
+        document.getElementById("PriceSlider").addEventListener("input", function() {
+            document.getElementById("PriceOutput").value = this.value;
+
+            clearTimeout(priceSearchTimeout);
+            priceSearchTimeout = setTimeout(SearchParking, 300);
+        });
+
+        document.getElementById("ClearButton").addEventListener("click", clearFilter);
+        }
+
+        let searchText, hasGarage, hasEVCharger, hasCameras, isDisabledAccessible, regime, maxPrice;
+
+        document.getElementById("appContainer").addEventListener('click', function(event) {
+
+            const isInfoPanel = event.target.closest('.gm-style-iw');
+
+            const isMapOrMarker = event.target.closest('.gm-style');
+
+            if (!isInfoPanel && !isMapOrMarker) {
+                UnselectParking();
+
+                if (selectedInfoPanel) {
+                    selectedInfoPanel.close();
+                    selectedInfoPanel = null;
+                }
+            }
+        });
+        
+    </script>
+}

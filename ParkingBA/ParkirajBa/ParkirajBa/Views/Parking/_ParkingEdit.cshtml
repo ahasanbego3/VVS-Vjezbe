@@ -1,0 +1,228 @@
+﻿@model ParkirajBa.Models.ParkingObject
+
+<h3>Uredi parking: @Model.name</h3>
+<!-- UPLOAD NASLOVNE SLIKE -->
+<div class="form-group" style="margin-bottom: 20px; padding-bottom: 20px; border-bottom: 1px solid #f0f0f0;">
+    <label class="form-label">Zamijeni naslovnu sliku</label>
+    <div style="display: flex; gap: 10px; align-items: center;">
+        <input type="file" id="coverImageInput" accept="image/*"
+               style="flex:1; padding:10px 13px; border:1px solid #e0e0e0; border-radius:8px; font-size:14px; box-sizing:border-box;" />
+        <button type="button" id="btnUploadCover"
+                onclick="uploadCoverImage()"
+                style="padding:10px 18px; background:#6287f9; color:white; border:none; border-radius:8px; font-size:13px; font-weight:600; cursor:pointer; white-space:nowrap;">
+            Uploadaj
+        </button>
+    </div>
+    <span id="coverUploadMsg" style="font-size:12px; margin-top:5px; display:block;"></span>
+</div>
+<form method="post" action="/Parking/Edit" class="editor-form" id="parkingEditForm" novalidate>
+    @Html.AntiForgeryToken()
+
+    <input type="hidden" name="id" value="@Model.ID" />
+
+    <!-- OSNOVNI PODACI -->
+    <div class="form-group">
+        <label class="form-label" for="fieldName">Naziv parkinga *</label>
+        <input type="text" name="name" id="fieldName" required placeholder="Unesite naziv..." class="form-input" value="@Model.name" autocomplete="off" />
+        <span class="val-err" id="errName"></span>
+    </div>
+
+    <div class="form-group">
+        <label class="form-label" for="fieldAddress">Adresa</label>
+        <input type="text" name="address" id="fieldAddress" placeholder="Unesite adresu..." class="form-input" value="@Model.address" autocomplete="street-address" />
+    </div>
+
+    <input type="hidden" name="latitude" id="fieldLatitude" value="@Model.latitude.ToString("F6", System.Globalization.CultureInfo.InvariantCulture)" />
+    <input type="hidden" name="longitude" id="fieldLongitude" value="@Model.longitude.ToString("F6", System.Globalization.CultureInfo.InvariantCulture)" />
+
+        <div>
+            <label class="form-label" for="fieldSpots">Ukupno mjesta *</label>
+            <input type="number" name="totalSpots" id="fieldSpots" min="1" required placeholder="Broj mjesta" class="form-input" value="@Model.totalSpots" />
+            <span class="val-err" id="errSpots"></span>
+        </div>
+        <div>
+            <label class="form-label" for="fieldHeight">Maks. visina (m)</label>
+            <input type="number" name="maxHeight" id="fieldHeight" step="0.1" min="0" placeholder="Ostavite prazno ako nema" class="form-input" value="@Model.maxHeight" />
+            <span class="val-err" id="errHeight"></span>
+        </div>
+    </div>
+
+
+    <!-- CHECKBOXES -->
+    <div class="checkbox-grid">
+        <label class="checkbox-label">
+            <input type="checkbox" name="hasCameras" value="true" @(Model.hasCameras == true ? "checked" : "") />
+            <span>📷 Video nadzor</span>
+        </label>
+        <label class="checkbox-label">
+            <input type="checkbox" name="hasEVCharger" value="true" @(Model.hasEVCharger == true ? "checked" : "") />
+            <span>⚡ EV punjač</span>
+        </label>
+        <label class="checkbox-label">
+            <input type="checkbox" name="isDisabledAccessible" value="true" @(Model.isDisabledAccessible == true ? "checked" : "") />
+            <span>♿ Invalidski pristup</span>
+        </label>
+        <label class="checkbox-label">
+            <input type="checkbox" name="isUnderground" value="true" @(Model.isUnderground == true ? "checked" : "") />
+            <span>🏢 Garaža</span>
+        </label>
+    </div>
+    <!-- RADNO VRIJEME -->
+<hr style="margin: 20px 0; border: none; border-top: 1px solid #e0e0e0;">
+
+<h4 style="margin-top: 20px; margin-bottom: 15px; font-size: 14px; font-weight: 600;">🕐 Radno vrijeme</h4>
+
+<div class="form-grid">
+    <div>
+        <label class="form-label" for="fieldOpensAt">Otvara se</label>
+        <input type="time" name="opensAt" id="fieldOpensAt" class="form-input"
+               value="@(Model.opensAt.HasValue ? Model.opensAt.Value.ToString("HH:mm") : "")" />
+    </div>
+    <div>
+        <label class="form-label" for="fieldClosesAt">Zatvara se</label>
+        <input type="time" name="closesAt" id="fieldClosesAt" class="form-input"
+               value="@(Model.closesAt.HasValue ? Model.closesAt.Value.ToString("HH:mm") : "")" />
+    </div>
+</div>
+    <!-- PRICING SEKCIJA -->
+    <hr style="margin: 20px 0; border: none; border-top: 1px solid #e0e0e0;">
+
+    <h4 style="margin-top: 20px; margin-bottom: 15px; font-size: 14px; font-weight: 600;">Cijene Parkinga</h4>
+
+    <div id="pricingContainer"></div>
+
+    <button type="button" id="btnAddPricing" class="add-pricing-btn">
+        + Dodaj cijenu
+    </button>
+
+    <!-- SUBMIT -->
+    <div class="form-actions">
+        <button type="submit" class="submit-button">
+            Spasi izmjene
+        </button>
+    </div>
+</form>
+
+<style>
+    .upload-row-wrapper {
+        display: flex;
+        flex-direction: row;
+        align-items: flex-start;
+        gap: 12px;
+        width: 100%;
+        overflow-x: auto;
+        padding-bottom: 5px;
+    }
+
+    .drop-zone-square {
+        width: 100px;
+        height: 100px;
+        min-width: 100px;
+        min-height: 100px;
+        border: 2px dashed #ced4da;
+        border-radius: 8px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background-color: #f8f9fa;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        flex-shrink: 0;
+    }
+
+        .drop-zone-square:hover,
+        .drop-zone-square.drag-over {
+            border-color: #0d6efd;
+            background-color: #e9ecef;
+        }
+
+    .preview-grid {
+        display: flex;
+        flex-direction: row;
+        flex-wrap: wrap;
+        gap: 12px;
+    }
+
+    .preview-item {
+        width: 100px;
+        height: 100px;
+        position: relative;
+        border: 1px solid #ddd;
+        border-radius: 6px;
+        overflow: hidden;
+        background: #fff;
+        cursor: grab;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+    }
+
+        .preview-item:active {
+            cursor: grabbing;
+        }
+
+        .preview-item img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .preview-item .remove-btn {
+            position: absolute;
+            top: 4px;
+            right: 4px;
+            background: rgba(220, 53, 69, 0.85);
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 22px;
+            height: 22px;
+            cursor: pointer;
+            font-size: 12px;
+            line-height: 1;
+        }
+
+    /* PRICING STIL */
+    .pricing-row {
+        display: grid;
+        grid-template-columns: 1fr 1fr 1fr auto;
+        gap: 10px;
+        padding: 12px;
+        background: #f8f9fa;
+        border-radius: 8px;
+        margin-bottom: 10px;
+        align-items: center;
+    }
+
+        .pricing-row select,
+        .pricing-row input {
+            padding: 8px;
+            border: 1px solid #e0e0e0;
+            border-radius: 6px;
+            font-size: 13px;
+        }
+
+        .pricing-row .remove-pricing-btn {
+            background: #dc3545;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            padding: 6px 12px;
+            cursor: pointer;
+            font-size: 12px;
+        }
+
+    .add-pricing-btn {
+        width: 100%;
+        padding: 10px;
+        background: #28a745;
+        color: white;
+        border: none;
+        border-radius: 8px;
+        cursor: pointer;
+        font-size: 13px;
+        margin-bottom: 15px;
+    }
+
+        .add-pricing-btn:hover {
+            background: #218838;
+        }
+</style>

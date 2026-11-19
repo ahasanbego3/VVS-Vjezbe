@@ -1,0 +1,60 @@
+﻿@{
+    Layout = "_Layout";
+    ViewData["Title"] = "Login";
+}
+
+<div class="auth-page">
+
+    <div class="auth-overlay"></div>
+
+    <div class="auth-content">
+
+        <img class="auth-logo" src="/images/logo.png" />
+
+        <div class="auth-card">
+
+            <h2>Prijavi se</h2>
+
+            @if (ViewBag.Error != null)
+            {
+                <div class="error-message">
+                    @ViewBag.Error
+                </div>
+            }
+
+            <form method="post" action="/User/Login">
+
+                <input type="email"
+                       name="email"
+                       id="emailInput"
+                       placeholder="Email"
+                       oninvalid="this.setCustomValidity('Molimo unesite ispravnu email adresu.')"
+                       oninput="this.setCustomValidity('')" />
+
+                <input type="password"
+                       name="password"
+                       id="passwordInput"
+                       placeholder="Lozinka"
+                       oninvalid="this.setCustomValidity('Molimo unesite lozinku.')"
+                       oninput="this.setCustomValidity('')" />
+
+                <button type="submit">
+                    Prijava putem Email-a
+                </button>
+
+            </form>
+
+            <div class="auth-divider">
+                <span>ili</span>
+            </div>
+
+            <a class="secondary-auth-btn"
+               href="/User/Register">
+
+                Registracija putem Email-a
+
+            </a>
+
+        </div>
+    </div>
+</div>

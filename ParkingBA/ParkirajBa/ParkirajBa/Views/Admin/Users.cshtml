@@ -1,0 +1,122 @@
+@model List<ParkirajBa.Controllers.AdminUserViewModel>
+@{
+    Layout = "_Layout";
+    ViewData["Title"] = "Korisnici";
+    string search = ViewBag.SearchTerm ?? "";
+    string roleFilter = ViewBag.RoleFilter ?? "";
+}
+
+<partial name="_AdminStyles" />
+
+<div class="adm-wrapper">
+    <partial name="_AdminSidebar" />
+
+    <main class="adm-content">
+
+        <div class="adm-page-header">
+            <div>
+                <h1 class="adm-page-title">Korisnici</h1>
+                <p class="adm-page-sub">Upravljanje korisničkim računima</p>
+            </div>
+            <span class="adm-badge blue" style="font-size:13px;padding:6px 14px;">@Model.Count korisnika</span>
+        </div>
+
+        @if (TempData["Success"] != null)
+        {
+            <div class="adm-alert-success">✓ @TempData["Success"]</div>
+        }
+
+        <!-- search and filter -->
+        <form method="get" style="display:flex;gap:10px;margin-bottom:20px;flex-wrap:wrap;">
+            <input name="search" value="@search" placeholder="Pretraži ime ili email..."
+                   class="adm-input" style="width:260px;" />
+            <select name="role" class="adm-input">
+                <option value="" selected="@(roleFilter == "" ? "selected" : null)">Sve uloge</option>
+                <option value="Admin" selected="@(roleFilter == "Admin" ? "selected" : null)">Admin</option>
+                <option value="Owner" selected="@(roleFilter == "Owner" ? "selected" : null)">Vlasnik</option>
+                <option value="User" selected="@(roleFilter == "User" ? "selected" : null)">Korisnik</option>
+            </select>
+            <button type="submit" class="adm-btn adm-btn-primary">Pretraži</button>
+            <a href="/Admin/Users" class="adm-btn adm-btn-outline">Poništi</a>
+        </form>
+
+        <div class="adm-card" style="overflow:hidden;">
+            <table class="adm-table">
+                <thead>
+                    <tr>
+                        <th>Ime i prezime</th>
+                        <th>Email</th>
+                        <th>Uloga</th>
+                        <th>Email</th>
+                        <th>Status</th>
+                        <th>Akcije</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var u in Model)
+                    {
+                        <tr>
+                            <td style="font-weight:600;">@u.FullName</td>
+                            <td style="color:var(--adm-text2);">@u.Email</td>
+                            <td>
+                                @foreach (var r in u.Roles)
+                                {
+                                    <span class="adm-badge @(r == "Admin" ? "orange" : r == "Owner" ? "blue" : "gray")">
+                                        @(r == "Admin" ? "Admin" : r == "Owner" ? "Vlasnik" : "Korisnik")
+                                    </span>
+                                }
+                            </td>
+                            <td>
+                                @if (u.EmailConfirmed)
+                                {
+                                    <span class="adm-badge green">Potvrđen</span>
+                                }
+                                else
+                                {
+
+                                    <span class="adm-badge gray">Na čekanju</span>
+                                }
+                            </td>
+                            <td>
+                                @if (u.IsLocked)
+                                {
+                                    <span class="adm-badge orange">Zaključan</span>
+                                }
+                                else
+                                {
+
+                                    <span class="adm-badge green">Aktivan</span>
+                                }
+                            </td>
+                            <td>
+                                <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;">
+                                    <form asp-action="ChangeRole" method="post" style="display:flex;gap:4px;">
+                                        <input type="hidden" name="userId" value="@u.Id" />
+                                        <select name="newRole" class="adm-input" style="padding:5px 8px;font-size:12px;">
+                                            <option value="User">Korisnik</option>
+                                            <option value="Owner">Vlasnik</option>
+                                            <option value="Admin">Admin</option>
+                                        </select>
+                                        <button type="submit" class="adm-btn adm-btn-blue adm-btn-sm">Postavi</button>
+                                    </form>
+                                    <form asp-action="ToggleLock" method="post">
+                                        <input type="hidden" name="userId" value="@u.Id" />
+                                        <button type="submit" class="adm-btn adm-btn-sm @(u.IsLocked ? "adm-btn-teal" : "adm-btn-warning")">
+                                            @(u.IsLocked ? "Otključaj" : "Zaključaj")
+                                        </button>
+                                    </form>
+                                    <form asp-action="DeleteUser" method="post"
+                                          onsubmit="event.preventDefault();admConfirm(this,'Brisanje korisnika','Jeste li sigurni da želite obrisati korisnika @u.FullName?');">
+                                        <input type="hidden" name="userId" value="@u.Id" />
+                                        <button type="submit" class="adm-btn adm-btn-danger adm-btn-sm">Obriši</button>
+                                    </form>
+                                </div>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+
+    </main>
+</div>
